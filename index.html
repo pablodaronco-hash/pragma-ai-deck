@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pragma AI — Sistemas de anuncios con IA que venden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08060f;--bg2:#0c0a18;
+  --mg:#ff2e73;--pk:#ff5a8a;--bl:#2e5bff;--blb:#3d7bff;--vl:#7b3ff2;
+  --tx:#f5f3ff;--mt:#a59fc4;--mt2:#766f94;
+  --ln:rgba(255,255,255,.10);--ln2:rgba(255,255,255,.06);
+  --cd:rgba(255,255,255,.035);
+  --gr:linear-gradient(100deg,var(--mg) 0%,var(--vl) 48%,var(--blb) 100%);
+  --font:'Hanken Grotesk',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:var(--font);color:var(--tx);-webkit-font-smoothing:antialiased}
+
+/* aurora */
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;background:var(--bg)}
+.blob{position:absolute;border-radius:50%;filter:blur(80px);will-change:transform}
+.b1{width:55vw;height:55vw;background:radial-gradient(circle,rgba(255,46,115,.6),transparent 70%);top:-15vw;left:-10vw;animation:d1 22s ease-in-out infinite}
+.b2{width:50vw;height:50vw;background:radial-gradient(circle,rgba(46,91,255,.55),transparent 70%);bottom:-18vw;right:-8vw;animation:d2 26s ease-in-out infinite}
+.b3{width:38vw;height:38vw;background:radial-gradient(circle,rgba(123,63,242,.45),transparent 70%);top:30%;left:40%;animation:d3 30s ease-in-out infinite}
+@keyframes d1{0%,100%{transform:translate(0,0)scale(1)}50%{transform:translate(8vw,6vh)scale(1.12)}}
+@keyframes d2{0%,100%{transform:translate(0,0)scale(1)}50%{transform:translate(-7vw,-5vh)scale(1.1)}}
+@keyframes d3{0%,100%{transform:translate(0,0)scale(1)}50%{transform:translate(-6vw,8vh)scale(.9)}}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%)}
+
+/* deck */
+.deck{position:relative;z-index:2;height:100vh;width:100vw;overflow:hidden}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,5vw,90px) clamp(28px,6vw,110px);opacity:0;visibility:hidden;transform:scale(.99);transition:opacity .45s ease-out,transform .45s ease-out,visibility .45s;pointer-events:none}
+.slide.active{opacity:1;visibility:visible;transform:none;pointer-events:auto}
+.inner{max-width:1200px;width:100%;margin:0 auto;overflow:visible}
+
+/* reveal */
+.r{opacity:0;transform:translateY(16px);transition:opacity .5s ease-out,transform .5s ease-out;transition-delay:var(--d,0ms)}
+.slide.active .r{opacity:1;transform:none}
+
+/* type */
+.kicker{font-family:var(--mono);font-size:clamp(10px,.9vw,12px);letter-spacing:.28em;text-transform:uppercase;color:var(--mt);display:flex;align-items:center;gap:12px}
+.kicker::before{content:"";width:30px;height:1px;background:var(--gr)}
+.grad{background:var(--gr);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font-weight:900;font-size:clamp(38px,6.5vw,86px);line-height:.97;letter-spacing:-.03em}
+h2{font-weight:800;font-size:clamp(26px,4vw,54px);line-height:1.03;letter-spacing:-.024em}
+.lead{font-size:clamp(15px,1.35vw,19px);color:var(--mt);line-height:1.55;font-weight:400;max-width:62ch}
+.wordmark{font-weight:900;font-size:clamp(48px,8.5vw,120px);line-height:1.1;letter-spacing:-.025em;overflow:visible;display:block;padding-left:.04em;margin-bottom:8px}
+.tagline{font-family:var(--mono);font-size:clamp(12px,1.2vw,16px);letter-spacing:.1em;color:var(--mt);margin-top:4px}
+.note{font-family:var(--mono);font-size:11.5px;color:var(--mt2);letter-spacing:.03em}
+.pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:6px 13px;border:1px solid var(--ln);border-radius:100px;color:var(--mt);background:var(--cd)}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--mg);box-shadow:0 0 8px var(--mg)}
+
+/* cards */
+.card{background:var(--cd);border:1px solid var(--ln);border-radius:18px;padding:24px;position:relative;overflow:hidden;backdrop-filter:blur(6px)}
+.card h3{font-size:17px;font-weight:700;margin-bottom:7px;letter-spacing:-.01em}
+.card p{font-size:13.5px;color:var(--mt);line-height:1.5}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+
+/* stats */
+.stats{display:flex;flex-wrap:wrap;gap:12px}
+.stat{flex:1;min-width:140px;border:1px solid var(--ln);border-radius:16px;padding:18px 20px;background:var(--cd)}
+.stat .v{font-family:var(--mono);font-size:clamp(24px,2.6vw,38px);font-weight:700;line-height:1}
+.stat .l{font-size:12px;color:var(--mt);margin-top:8px;line-height:1.4}
+
+/* flow */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.step{flex:1;min-width:170px;padding:20px;border:1px solid var(--ln);border-radius:16px;background:var(--cd)}
+.step .n{font-family:var(--mono);font-size:11px;color:var(--mg);letter-spacing:.1em;margin-bottom:10px}
+.step h4{font-size:16px;font-weight:700;margin-bottom:6px}
+.step p{font-size:12.5px;color:var(--mt);line-height:1.45}
+.arrow{display:grid;place-items:center;color:var(--mt2);font-size:20px;padding:0 4px}
+
+/* compare */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.col{border:1px solid var(--ln);border-radius:18px;padding:26px;background:var(--cd)}
+.col.win{border-color:rgba(255,46,115,.4);background:linear-gradient(160deg,rgba(255,46,115,.08),rgba(46,91,255,.06))}
+.ch{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mt);margin-bottom:18px}
+.crow{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--ln2);font-size:14px}
+.crow:last-child{border-bottom:none}
+.crow span:first-child{color:var(--mt)}
+.crow span:last-child{font-weight:600;text-align:right}
+
+/* pricing */
+.plans-wrap{display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-top:22px}
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.plan{border:1px solid var(--ln);border-radius:18px;padding:22px 20px;background:var(--cd);display:flex;flex-direction:column;position:relative}
+.plan.feat{border-color:transparent;background:linear-gradient(170deg,rgba(255,46,115,.12),rgba(123,63,242,.08) 50%,rgba(46,91,255,.10));box-shadow:0 0 0 1px rgba(255,46,115,.35),0 20px 50px -18px rgba(255,46,115,.38)}
+.badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;padding:4px 12px;border-radius:100px;background:var(--gr);color:#fff;white-space:nowrap;font-weight:700}
+.pname{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mt)}
+.ptitle{font-size:18px;font-weight:800;margin:5px 0 14px;letter-spacing:-.01em}
+.price{font-family:var(--mono);font-weight:700;font-size:30px;line-height:1}
+.price small{font-size:13px;color:var(--mt);font-weight:400}
+.reg{font-size:11.5px;color:var(--mt2);margin-top:6px}
+.reg s{color:var(--mt2)}
+.plan ul{list-style:none;margin:14px 0 0;display:flex;flex-direction:column;gap:8px}
+.plan li{font-size:12.5px;color:#cfcbe6;line-height:1.4;display:flex;gap:8px;align-items:flex-start}
+.plan li svg{flex-shrink:0;margin-top:3px}
+.seg{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--mt);text-transform:uppercase;margin:13px 0 2px}
+.commit{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--mt2);margin-top:14px;padding-top:12px;border-top:1px solid var(--ln2)}
+.commit b{color:var(--mt)}
+.discount-side{border:1px solid rgba(255,46,115,.35);border-radius:18px;padding:22px;background:linear-gradient(160deg,rgba(255,46,115,.10),rgba(123,63,242,.07));display:flex;flex-direction:column;gap:14px}
+.discount-side h4{font-size:14px;font-weight:700;line-height:1.3}
+.drow{background:var(--cd);border-radius:12px;padding:12px 14px}
+.drow .dp{font-family:var(--mono);font-size:16px;font-weight:700;line-height:1}
+.drow .dl{font-size:11px;color:var(--mt);margin-top:3px}
+.drow .ds{font-size:10.5px;color:var(--mg);margin-top:2px;font-family:var(--mono)}
+
+/* checks */
+.ck{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:#d9d5f0;line-height:1.45;margin-bottom:10px}
+.ck svg{flex-shrink:0;margin-top:2px}
+
+/* stages */
+.stages-wrap{margin-top:20px}
+.stage-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.stage-btn{flex:1;min-width:140px;padding:12px 14px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);color:var(--mt);cursor:pointer;font-family:var(--font);font-size:12.5px;font-weight:600;text-align:left;transition:all .2s ease;position:relative}
+.stage-btn .snum{font-family:var(--mono);font-size:10px;color:var(--mg);letter-spacing:.1em;display:block;margin-bottom:4px}
+.stage-btn .stitle{font-size:12.5px;font-weight:700;color:var(--mt);line-height:1.3;transition:color .2s}
+.stage-btn .stime{font-family:var(--mono);font-size:10px;color:var(--mt2);margin-top:3px;display:block}
+.stage-btn:hover{border-color:rgba(255,46,115,.35);background:rgba(255,46,115,.06)}
+.stage-btn:hover .stitle{color:var(--tx)}
+.stage-btn.active{border-color:rgba(255,46,115,.5);background:linear-gradient(160deg,rgba(255,46,115,.12),rgba(123,63,242,.07));color:var(--tx)}
+.stage-btn.active .stitle{color:var(--tx)}
+.stage-btn.active::after{content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid rgba(255,46,115,.5)}
+
+.stage-detail{margin-top:16px;border:1px solid var(--ln);border-radius:16px;padding:24px;background:var(--cd);display:none}
+.stage-detail.active{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.stage-detail.no-approval{display:none}
+.stage-detail.no-approval.active{display:block}
+
+.sd-left h3{font-size:17px;font-weight:700;margin-bottom:8px}
+.sd-left p{font-size:13.5px;color:var(--mt);line-height:1.5}
+.sd-deliverable{margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid var(--ln);border-radius:10px;font-size:12.5px;color:var(--mt)}
+.sd-deliverable b{color:var(--tx);display:block;margin-bottom:3px}
+
+.approval-flow{border-left:1px solid var(--ln);padding-left:20px}
+.af-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mt);text-transform:uppercase;margin-bottom:14px}
+.af-start{font-size:13px;font-weight:600;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid var(--ln)}
+.af-branches{display:grid;gap:10px}
+.af-branch{border-radius:12px;padding:14px}
+.af-branch.ok{background:rgba(46,200,100,.08);border:1px solid rgba(46,200,100,.25)}
+.af-branch.no{background:rgba(255,46,115,.07);border:1px solid rgba(255,46,115,.22)}
+.af-branch .label{font-weight:700;font-size:12.5px;margin-bottom:6px}
+.af-branch.ok .label{color:#4ade80}
+.af-branch.no .label{color:var(--pk)}
+.af-branch p{font-size:12px;color:var(--mt);line-height:1.45}
+
+/* addons */
+.addon-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:26px}
+.addon{border:1px solid var(--ln);border-radius:18px;padding:24px;background:var(--cd);display:flex;flex-direction:column;gap:0}
+.addon .aico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.05);border:1px solid var(--ln);margin-bottom:14px}
+.addon h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.addon p{font-size:13px;color:var(--mt);line-height:1.45;flex:1}
+.addon .aprice{font-family:var(--mono);font-weight:700;font-size:22px;margin-top:16px;line-height:1}
+.addon .aprice small{font-size:12px;font-weight:400;color:var(--mt)}
+.addon .atag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--mt2);margin-top:4px}
+
+/* nav */
+.hud{position:fixed;z-index:20;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;padding:18px clamp(24px,5vw,60px);pointer-events:none}
+.hud>*{pointer-events:auto}
+.brand-mini{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--mt);text-transform:uppercase}
+.brand-mini b{color:var(--tx)}
+.nav{display:flex;align-items:center;gap:12px}
+.nb{width:40px;height:40px;border-radius:50%;border:1px solid var(--ln);background:rgba(255,255,255,.04);color:var(--tx);cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(8px);transition:transform .12s ease-out,background .2s,border-color .2s}
+.nb:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.25)}
+.nb:active{transform:scale(.92)}
+.nb:disabled{opacity:.3;cursor:default}
+.counter{font-family:var(--mono);font-size:12px;color:var(--mt);min-width:52px;text-align:center}
+.counter b{color:var(--tx)}
+.progress{position:fixed;top:0;left:0;height:2px;background:var(--gr);z-index:21;transition:width .45s cubic-bezier(.4,0,.2,1);box-shadow:0 0 12px rgba(255,46,115,.6)}
+.dots{position:fixed;z-index:20;right:clamp(18px,2.5vw,32px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px}
+.pdot{width:7px;height:7px;border-radius:50%;border:1px solid var(--ln);background:transparent;cursor:pointer;padding:0;transition:transform .15s ease-out,background .2s}
+.pdot:hover{transform:scale(1.35)}
+.pdot.on{background:var(--gr);border-color:transparent}
+.hint{position:fixed;z-index:20;bottom:20px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mt2);text-transform:uppercase;animation:fh 3.5s ease-out forwards 1s;opacity:0}
+@keyframes fh{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}
+
+@media(max-width:860px){
+  .g3,.plans-grid{grid-template-columns:1fr 1fr}
+  .plans-wrap{grid-template-columns:1fr}
+  .compare,.g2,.addon-grid{grid-template-columns:1fr}
+  .dots{display:none}
+  .arrow{display:none}
+  .stage-detail.active{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .g3,.plans-grid{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  .r{transform:none;transition:opacity .35s}
+  .slide{transform:none}
+  .blob{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div class="aurora">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+</div>
+<div class="grain"></div>
+<div class="vignette"></div>
+<div class="progress" id="progress"></div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════════════════════════ SLIDE 01 · COVER ══════════════════════════════ -->
+<section class="slide active">
+<div class="inner">
+  <div class="kicker r" style="--d:60ms">Pragma AI</div>
+  <span class="wordmark grad r" style="--d:160ms">Pragma AI</span>
+  <div class="tagline r" style="--d:230ms">Practical AI for Real Businesses</div>
+  <h2 class="r" style="--d:340ms;margin-top:36px;max-width:22ch">Sistemas escalables de anuncios con <span class="grad">inteligencia artificial</span> que venden.</h2>
+  <p class="lead r" style="--d:440ms;margin-top:18px">Más creativos, más ángulos testeados y mensajes que conectan de verdad con tu audiencia — a una fracción del costo y del tiempo de la producción tradicional.</p>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 02 · PROBLEMA ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">El problema</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Producir UGC con personas reales te <span class="grad">cuesta caro</span> y no escala.</h2>
+  <p class="lead r" style="--d:180ms;margin-top:16px">Cada video implica dinero, tiempo y depender de personas. Y cuando necesitás volumen para testear, el modelo se rompe.</p>
+  <div class="stats r" style="--d:270ms;margin-top:28px">
+    <div class="stat"><div class="v grad">$200+</div><div class="l">por video · creadores con track record arrancan en $500–$800</div></div>
+    <div class="stat"><div class="v grad">3–10×</div><div class="l">se encarece con derechos de uso para pauta y revisiones</div></div>
+    <div class="stat"><div class="v grad">Días</div><div class="l">de coordinación, briefs y guiones que no siempre se respetan</div></div>
+    <div class="stat"><div class="v grad">Lento</div><div class="l">imposible subir y testear creativo nuevo todas las semanas</div></div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 03 · URGENCIA ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">El costo oculto</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Sin creativo nuevo, <span class="grad">tu pauta se quema.</span></h2>
+  <p class="lead r" style="--d:180ms;margin-top:16px">Meta y TikTok premian el ingreso constante de creativo fresco. Cuando tus anuncios se fatigan, el costo por resultado sube y tu presupuesto financia ads cansados en vez de mover hipótesis nuevas.</p>
+  <div class="grid g3 r" style="--d:280ms;margin-top:28px">
+    <div class="card"><h3>Fatiga creativa</h3><p>El mismo anuncio rinde cada vez menos. Sin reemplazos, el CPA trepa semana a semana sin que cambies nada.</p></div>
+    <div class="card"><h3>Testeo lento = aprendizaje lento</h3><p>Si no testeás ángulos, nunca encontrás al ganador. Y el ganador es el que paga toda la cuenta.</p></div>
+    <div class="card"><h3>La competencia no para</h3><p>Quien itera más rápido aprende más rápido. El creativo es hoy la palanca #1 del performance en paid social.</p></div>
+  </div>
+  <p class="note r" style="--d:380ms;margin-top:20px">Cada semana sin creativo nuevo es presupuesto que podría estar encontrando tu próximo anuncio ganador.</p>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 04 · SOLUCION ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">La solución</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Un <span class="grad">sistema</span> de anuncios con IA, no piezas sueltas.</h2>
+  <p class="lead r" style="--d:180ms;margin-top:16px">Construimos una biblioteca creativa viva: producimos, organizamos y renovamos los anuncios que tu marca necesita para testear sin parar y escalar lo que funciona.</p>
+  <div class="grid g3 r" style="--d:280ms;margin-top:28px">
+    <div class="card">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="2" style="margin-bottom:12px"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <h3>Más volumen</h3><p>Decenas de piezas listas para campaña, todos los meses, sin rodajes ni actores.</p>
+    </div>
+    <div class="card">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9a7bff" stroke-width="2" style="margin-bottom:12px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+      <h3>Más ángulos</h3><p>Probamos dolores, deseos, avatares y promesas distintas para encontrar qué conecta con tu audiencia.</p>
+    </div>
+    <div class="card">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3d7bff" stroke-width="2" style="margin-bottom:12px"><path d="M3 16l5-5 4 3 5-7" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 7h4v4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 21h18" stroke-linecap="round"/></svg>
+      <h3>Mejores mensajes</h3><p>Identificamos los anuncios que mueven la aguja y escalamos sobre datos, no corazonadas.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 05 · LOGICA ESTRATEGICA ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">Cómo pensamos cada anuncio</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Estrategia con estética. <span class="grad">Las dos, en cada pieza.</span></h2>
+  <p class="lead r" style="--d:180ms;margin-top:14px;margin-bottom:28px">Cada anuncio nace de una lógica de venta clara y se ejecuta con un nivel estético que detiene el scroll. La estrategia define qué decir; la estética hace que se sienta.</p>
+  <div class="flow r" style="--d:280ms">
+    <div class="step"><div class="n">01</div><h4>Problema</h4><p>Mostramos la situación real que vive tu cliente.</p></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">02</div><h4>Dolor / Deseo</h4><p>Conectamos con la emoción que activa la compra.</p></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">03</div><h4>Solución</h4><p>Posicionamos tu producto como la salida natural.</p></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">04</div><h4>Oferta + CTA</h4><p>Cerramos con una oferta clara que impulsa la acción.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 06 · QUE PRODUCIMOS ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">Qué producimos</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Una biblioteca creativa <span class="grad">completa</span>.</h2>
+  <div class="grid g3 r" style="--d:220ms;margin-top:26px">
+    <div class="card"><h3>UGC AI</h3><p>Actores IA realistas con lip-sync natural, hablando a cámara como un creador real.</p></div>
+    <div class="card"><h3>VSL</h3><p>Video sales letters de 30 a 90 s para convertir tráfico frío y tibio.</p></div>
+    <div class="card"><h3>Statics</h3><p>Piezas estáticas de alto impacto para Meta y TikTok, por ángulo y por dolor.</p></div>
+    <div class="card"><h3>Product Shots AI</h3><p>Fotografía de producto generada con IA en contextos y estilos infinitos.</p></div>
+    <div class="card"><h3>Storytelling</h3><p>Conceptos narrativos que sostienen la marca y conectan emocionalmente.</p></div>
+    <div class="card"><h3>Variaciones</h3><p>Hooks, guiones y cortes por avatar, deseo y etapa del funnel de compra.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 07 · IA VS TRADICIONAL ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">La ventaja</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px;margin-bottom:26px">Misma calidad, <span class="grad">otra escala.</span></h2>
+  <div class="compare r" style="--d:220ms">
+    <div class="col">
+      <div class="ch">UGC Tradicional</div>
+      <div class="crow"><span>Costo por video</span><span>$200 – $800+</span></div>
+      <div class="crow"><span>Tiempo de entrega</span><span>Días / semanas</span></div>
+      <div class="crow"><span>Volumen mensual</span><span>Bajo</span></div>
+      <div class="crow"><span>Cambiar guión</span><span>Re-grabar</span></div>
+      <div class="crow"><span>Fricción operativa</span><span>Actores · locación · agenda</span></div>
+      <div class="crow"><span>Edición de video</span><span>Editor externo · costo aparte</span></div>
+      <div class="crow"><span>Velocidad de testeo</span><span>Limitada</span></div>
+      <div class="crow"><span>Adaptaciones</span><span>Sesión extra</span></div>
+    </div>
+    <div class="col win">
+      <div class="ch grad">Pragma AI</div>
+      <div class="crow"><span>Costo por video</span><span class="grad">Fracción del costo</span></div>
+      <div class="crow"><span>Tiempo de entrega</span><span class="grad">Horas</span></div>
+      <div class="crow"><span>Volumen mensual</span><span class="grad">Alto y sostenido</span></div>
+      <div class="crow"><span>Cambiar guión</span><span class="grad">Regenerar</span></div>
+      <div class="crow"><span>Fricción operativa</span><span class="grad">Cero producción física</span></div>
+      <div class="crow"><span>Edición de video</span><span class="grad">Incluida · post profesional</span></div>
+      <div class="crow"><span>Velocidad de testeo</span><span class="grad">Continua</span></div>
+      <div class="crow"><span>Adaptaciones</span><span class="grad">Incluidas</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE · CASO REAL ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">Casos reales · La prueba</div>
+  <h2 class="r" style="--d:100ms;margin-top:14px">Mismo sistema. <span class="grad">Resultados en distintas industrias.</span></h2>
+  <p class="lead r" style="--d:180ms;margin-top:12px">Dos categorías distintas. El mismo principio: creativo auténtico a volumen mueve la aguja.</p>
+
+  <div class="grid g2 r" style="--d:260ms;margin-top:24px">
+    <div class="card" style="padding:28px">
+      <div class="pill" style="margin-bottom:16px"><span class="dot"></span>Gaming · 99games</div>
+      <h3 style="font-size:18px;margin-bottom:10px">Star Chef 2</h3>
+      <p style="font-size:13.5px;margin-bottom:20px">La producción tradicional no daba el volumen de variantes para testear y escalar. Migraron a producción creativa con IA — testeo sistemático de hooks, formatos y ángulos a escala.</p>
+      <div class="stats" style="gap:10px">
+        <div class="stat" style="padding:14px 16px">
+          <div class="v grad" style="font-size:clamp(20px,2vw,30px)">+45%</div>
+          <div class="l">ROAS</div>
+        </div>
+        <div class="stat" style="padding:14px 16px">
+          <div class="v grad" style="font-size:clamp(20px,2vw,30px)">+55%</div>
+          <div class="l">CTR</div>
+        </div>
+        <div class="stat" style="padding:14px 16px">
+          <div class="v grad" style="font-size:clamp(20px,2vw,30px)">−18%</div>
+          <div class="l">CAC</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:28px;border-color:rgba(255,46,115,.3);background:linear-gradient(160deg,rgba(255,46,115,.07),rgba(46,91,255,.05))">
+      <div class="pill" style="margin-bottom:16px"><span class="dot"></span>Beauty · Makeup</div>
+      <h3 style="font-size:18px;margin-bottom:10px">Iconic London</h3>
+      <p style="font-size:13.5px;margin-bottom:20px">La marca de maquillaje construyó su estrategia entera en Meta e Instagram sobre UGC auténtico — tutoriales, reviews y contenido de producto en acción. Resultado en 12 meses.</p>
+      <div class="stats" style="gap:10px">
+        <div class="stat" style="padding:14px 16px">
+          <div class="v grad" style="font-size:clamp(20px,2vw,30px)">+126%</div>
+          <div class="l">Conversión</div>
+        </div>
+        <div class="stat" style="padding:14px 16px">
+          <div class="v grad" style="font-size:clamp(20px,2vw,30px)">+11%</div>
+          <div class="l">Valor promedio de orden</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note r" style="--d:380ms;margin-top:18px">Solo el 6–7% de las variantes escalan — quien testea más, encuentra más ganadores. Es exactamente la lógica con la que opera Pragma AI. · <span style="color:var(--mt2)">Fuentes: Admiral Media (Star Chef 2 · programa de creative con IA); PiXENDA / Iconic London (estrategia UGC en Meta e Instagram).</span></p>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 08 · QUIEN ESTA DETRAS ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">Quién está detrás</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Performance probado, <span class="grad">no promesas.</span></h2>
+  <p class="lead r" style="--d:180ms;margin-top:14px"><b style="color:var(--tx)">Guido Canga</b> — Creative Strategist & Socio · +8 años diseñando la estrategia creativa detrás de campañas de Meta Ads de alto rendimiento. Su criterio define cada ángulo, hook y guión que produce Pragma AI.</p>
+  <div class="stats r" style="--d:260ms;margin-top:26px">
+    <div class="stat"><div class="v grad">17.9×</div><div class="l">ROI pico en campañas de Meta Ads escaladas</div></div>
+    <div class="stat"><div class="v grad">8–13.3×</div><div class="l">ROI consistente en creativos de alto rendimiento</div></div>
+    <div class="stat"><div class="v grad">$85k+</div><div class="l">en ventas mensuales generadas por creativos ganadores</div></div>
+    <div class="stat"><div class="v grad">+8 años</div><div class="l">estrategia creativa · ángulos · hooks · workflows con IA</div></div>
+  </div>
+  <p class="note r" style="--d:340ms;margin-top:20px">El criterio de performance que mueve estos números es el que aplicamos a cada biblioteca de Pragma AI.</p>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 09 · RETAINERS ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">Modelos de trabajo</div>
+  <h2 class="r" style="--d:80ms;margin-top:14px">Retainers mensuales <span class="grad">para testear sin parar.</span></h2>
+
+  <div class="plans-wrap r" style="--d:200ms">
+    <div class="plans-grid">
+      <!-- STARTER -->
+      <div class="plan">
+        <div class="pname">Starter</div>
+        <div class="ptitle">Test</div>
+        <div class="price">$1,950<small>/mes</small></div>
+        <div class="reg">Founding · regular <s>$2,450/mes</s></div>
+        <div class="seg">Setup · Mes 1</div>
+        <ul>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Análisis de producto + buyer persona</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>5 ángulos creativos</li>
+        </ul>
+        <div class="seg">Cada mes</div>
+        <ul>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>5 videos UGC AI <span style="color:var(--mt2)">(+10 hooks · 2 por video)</span></li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>6 statics + 3 product shots</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>1 VSL <span style="color:var(--mt2)">(+2 hooks)</span></li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Meta + TikTok · 1 ronda de ajustes</li>
+        </ul>
+        <div style="margin-top:14px;padding:12px 14px;background:rgba(255,46,115,.08);border:1px solid rgba(255,46,115,.25);border-radius:12px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--mt);text-transform:uppercase;margin-bottom:4px">Total entregables en video</div>
+          <div style="font-family:var(--mono);font-size:22px;font-weight:700;background:var(--gr);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1">15 <span style="font-size:12px;font-weight:400;color:var(--mt)">videos/mes</span></div>
+        </div>
+        <div class="commit"><b>Sin compromiso mínimo.</b> Cancelás cuando quieras.</div>
+      </div>
+      <!-- GROWTH -->
+      <div class="plan feat">
+        <div class="badge">★ Más elegido</div>
+        <div class="pname">Growth</div>
+        <div class="ptitle">Scale</div>
+        <div class="price">$3,950<small>/mes</small></div>
+        <div class="reg">Founding · regular <s>$4,950/mes</s></div>
+        <div class="seg">Setup · Mes 1</div>
+        <ul>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Investigación + competencia + mapa de mensajes</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>8–10 ángulos creativos</li>
+        </ul>
+        <div class="seg">Cada mes</div>
+        <ul>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>10 videos UGC AI <span style="color:var(--mt2)">(+20 hooks · 2 por video)</span></li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>12 statics + 6 product shots</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>2 VSL <span style="color:var(--mt2)">(+4 hooks)</span></li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Meta · TikTok · Reels · Shorts · 2 rondas</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Biblioteca organizada + reporte mensual</li>
+        </ul>
+        <div style="margin-top:14px;padding:12px 14px;background:rgba(255,46,115,.08);border:1px solid rgba(255,46,115,.25);border-radius:12px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--mt);text-transform:uppercase;margin-bottom:4px">Total entregables en video</div>
+          <div style="font-family:var(--mono);font-size:22px;font-weight:700;background:var(--gr);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1">30 <span style="font-size:12px;font-weight:400;color:var(--mt)">videos/mes</span></div>
+        </div>
+        <div class="commit"><b>Mínimo 3 meses.</b> Protege la profundidad del sistema.</div>
+      </div>
+      <!-- DOMINANCE -->
+      <div class="plan">
+        <div class="pname">Dominance</div>
+        <div class="ptitle">Performance System</div>
+        <div class="price">$6,950<small>/mes</small></div>
+        <div class="reg">Founding · regular <s>$8,950/mes</s></div>
+        <div class="seg">Setup · Mes 1</div>
+        <ul>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Investigación profunda + awareness levels</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Arquitectura completa de mensajes + 5 ofertas</li>
+        </ul>
+        <div class="seg">Cada mes</div>
+        <ul>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>20 videos UGC AI <span style="color:var(--mt2)">(+40 hooks · 2 por video)</span></li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>20 statics + 12 product shots</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>4 VSL <span style="color:var(--mt2)">(+8 hooks)</span> + storytelling</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Meta · TikTok · YT Shorts · Reels · landing · 3 rondas</li>
+          <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Reporte semanal + qué testear primero</li>
+        </ul>
+        <div style="margin-top:14px;padding:12px 14px;background:rgba(255,46,115,.08);border:1px solid rgba(255,46,115,.25);border-radius:12px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--mt);text-transform:uppercase;margin-bottom:4px">Total entregables en video</div>
+          <div style="font-family:var(--mono);font-size:22px;font-weight:700;background:var(--gr);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1">60 <span style="font-size:12px;font-weight:400;color:var(--mt)">videos/mes</span></div>
+        </div>
+        <div class="commit"><b>Mínimo 3 meses.</b> Protege la profundidad del sistema.</div>
+      </div>
+    </div>
+
+    <!-- DISCOUNT SIDE -->
+    <div class="discount-side">
+      <div class="pill"><span class="dot"></span>Oferta prepago</div>
+      <h4>Pagá 3 meses por adelantado y obtené un <span class="grad">10% de descuento</span> sobre el total.</h4>
+      <div class="drow">
+        <div class="dl" style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--mt2);font-family:var(--mono);margin-bottom:4px">Test</div>
+        <div class="dp grad">$5,265</div>
+        <div class="dl">3 meses juntos</div>
+        <div class="ds">Ahorrás $585</div>
+      </div>
+      <div class="drow">
+        <div class="dl" style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--mt2);font-family:var(--mono);margin-bottom:4px">Scale</div>
+        <div class="dp grad">$10,665</div>
+        <div class="dl">3 meses juntos</div>
+        <div class="ds">Ahorrás $1,185</div>
+      </div>
+      <div class="drow">
+        <div class="dl" style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--mt2);font-family:var(--mono);margin-bottom:4px">Performance</div>
+        <div class="dp grad">$18,765</div>
+        <div class="dl">3 meses juntos</div>
+        <div class="ds">Ahorrás $2,085</div>
+      </div>
+      <p class="note" style="margin-top:4px">Solo disponible para founding clients. Precio congelado 6 meses.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 10 · GARANTIA + FOUNDING ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">Garantía y acceso founding</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Bajo riesgo para empezar. <span class="grad">Ventaja para los primeros.</span></h2>
+  <div class="grid g2 r" style="--d:240ms;margin-top:28px">
+    <div class="card" style="padding:28px">
+      <div class="pill" style="margin-bottom:16px"><span class="dot"></span>Garantía de satisfacción</div>
+      <h3 style="font-size:20px;margin-bottom:10px">Iteramos hasta que apruebes.</h3>
+      <p style="font-size:13.5px">Cada pieza se trabaja con rondas de ajuste incluidas hasta que esté lista para campaña, dentro del alcance del plan. No avanzamos con algo que no apruebes. Sin sorpresas, sin letra chica.</p>
+    </div>
+    <div class="card" style="padding:28px;border-color:rgba(255,46,115,.35);background:linear-gradient(160deg,rgba(255,46,115,.08),rgba(46,91,255,.05))">
+      <div class="pill" style="margin-bottom:16px"><span class="dot"></span>Founding clients · primeros 5</div>
+      <h3 style="font-size:20px;margin-bottom:14px">Entrá ahora y congelá la ventaja.</h3>
+      <div class="ck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg><span><b style="color:#fff">Llamada de estrategia sin costo</b> — antes de comprometerte</span></div>
+      <div class="ck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Precio founding congelado por 6 meses</div>
+      <div class="ck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Prioridad de producción y atención directa</div>
+      <div class="ck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>10% de descuento adicional si pagás 3 meses adelantado</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 11 · COMO FUNCIONA ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">El proceso</div>
+  <h2 class="r" style="--d:90ms;margin-top:14px">¿Cómo <span class="grad">funciona</span>?</h2>
+  <p class="lead r" style="--d:160ms;margin-top:10px;margin-bottom:0">Seleccioná una etapa para ver qué pasa dentro — y qué sucede cuando algo se aprueba o pide ajustes.</p>
+
+  <div class="stages-wrap r" style="--d:240ms">
+    <div class="stage-tabs">
+      <button class="stage-btn active" onclick="setStage(0)">
+        <span class="snum">01</span>
+        <span class="stitle">Kick-off e Investigación</span>
+        <span class="stime">Semana 1</span>
+      </button>
+      <button class="stage-btn" onclick="setStage(1)">
+        <span class="snum">02</span>
+        <span class="stitle">Estrategia & Guiones</span>
+        <span class="stime">Semana 1–2</span>
+      </button>
+      <button class="stage-btn" onclick="setStage(2)">
+        <span class="snum">03</span>
+        <span class="stitle">Generación de Contenido</span>
+        <span class="stime">Semana 2–3</span>
+      </button>
+      <button class="stage-btn" onclick="setStage(3)">
+        <span class="snum">04</span>
+        <span class="stitle">Edición & Ajustes</span>
+        <span class="stime">Semana 3</span>
+      </button>
+      <button class="stage-btn" onclick="setStage(4)">
+        <span class="snum">05</span>
+        <span class="stitle">Entrega Final</span>
+        <span class="stime">Semana 3–4</span>
+      </button>
+    </div>
+
+    <!-- PANEL 0 -->
+    <div class="stage-detail no-approval active" id="sp0">
+      <div class="sd-left">
+        <h3>Kick-off e Investigación</h3>
+        <p>Arrancamos con una llamada de onboarding para entender tu producto, mercado y objetivos. Analizamos tu competencia, definimos el buyer persona y mapeamos dolores, deseos y objeciones clave. Todo queda documentado en un brief estratégico que guía la producción.</p>
+        <div class="sd-deliverable"><b>Entregable de etapa</b>Brief estratégico completo · sin aprobación requerida, es insumo interno del equipo.</div>
+      </div>
+    </div>
+
+    <!-- PANEL 1 -->
+    <div class="stage-detail" id="sp1">
+      <div class="sd-left">
+        <h3>Estrategia & Guiones</h3>
+        <p>Con el brief en mano, desarrollamos los ángulos creativos, hooks y guiones listos para producción. Cada guión tiene estructura de venta: problema → emoción → solución → CTA. Te presentamos todo para revisión antes de generar una sola imagen o video.</p>
+        <div class="sd-deliverable"><b>Entregable de etapa</b>Documento de guiones, hooks y ángulos · requiere aprobación de tu parte.</div>
+      </div>
+      <div class="approval-flow">
+        <div class="af-title">Flujo de aprobación</div>
+        <div class="af-start">📄 Recibís los guiones para revisar</div>
+        <div class="af-branches">
+          <div class="af-branch ok">
+            <div class="label">✓ Aprobado</div>
+            <p>Pasamos directamente a la etapa de Generación de Contenido sin demoras.</p>
+          </div>
+          <div class="af-branch no">
+            <div class="label">✗ Pedís ajustes</div>
+            <p>Hacemos una ronda de revisión incluida, ajustamos según tu feedback y volvemos a presentar. Una vez aprobado, continuamos.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 2 -->
+    <div class="stage-detail" id="sp2">
+      <div class="sd-left">
+        <h3>Generación de Contenido</h3>
+        <p>Producimos los UGC AI, VSLs, statics y product shots según los guiones aprobados. Generamos variaciones por ángulo, avatar y plataforma de destino. Todo pasa por un control de calidad interno antes de enviarte la primera versión.</p>
+        <div class="sd-deliverable"><b>Entregable de etapa</b>Biblioteca de contenido en primera versión · requiere aprobación de tu parte.</div>
+      </div>
+      <div class="approval-flow">
+        <div class="af-title">Flujo de aprobación</div>
+        <div class="af-start">🎬 Recibís las piezas generadas para revisar</div>
+        <div class="af-branches">
+          <div class="af-branch ok">
+            <div class="label">✓ Aprobado</div>
+            <p>Pasamos a edición final y adaptaciones por plataforma.</p>
+          </div>
+          <div class="af-branch no">
+            <div class="label">✗ Pedís ajustes</div>
+            <p>Revisamos las piezas necesarias dentro de las rondas del plan. Re-generamos, volvemos a presentar y continuamos tras aprobación.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 3 -->
+    <div class="stage-detail no-approval" id="sp3">
+      <div class="sd-left">
+        <h3>Edición & Ajustes Finales</h3>
+        <p>Aplicamos el feedback aprobado, optimizamos cada pieza para su plataforma de destino (Meta, TikTok, YouTube Shorts, etc.) y organizamos la biblioteca creativa por formato, ángulo y tipo de buyer. El objetivo de esta etapa es que cada pieza entre a campaña lista para testear.</p>
+        <div class="sd-deliverable"><b>Entregable de etapa</b>Piezas editadas, adaptadas por plataforma y organizadas · etapa interna, sin revisión adicional.</div>
+      </div>
+    </div>
+
+    <!-- PANEL 4 -->
+    <div class="stage-detail no-approval" id="sp4">
+      <div class="sd-left">
+        <h3>Entrega Final & Reporte</h3>
+        <p>Entregamos la biblioteca completa organizada y lista para testear. Incluimos un reporte con la recomendación estratégica de qué anuncios testear primero, qué ángulos priorizar y por qué. En retainers activos, arrancamos inmediatamente el ciclo del siguiente mes.</p>
+        <div class="sd-deliverable"><b>Entregable final</b>Biblioteca entregada + reporte estratégico + arranque del siguiente ciclo mensual.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 12 · ADD-ONS ══════════════════════════════ -->
+<section class="slide">
+<div class="inner">
+  <div class="kicker r">Servicios adicionales</div>
+  <h2 class="r" style="--d:100ms;margin-top:18px">Potenciá el sistema <span class="grad">con add-ons.</span></h2>
+  <p class="lead r" style="--d:180ms;margin-top:12px">Servicios que se suman a cualquier plan y completan el ecosistema de adquisición.</p>
+  <div class="addon-grid r" style="--d:260ms">
+    <div class="addon">
+      <div class="aico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <h3>ChatBot AI para Leads & Redes</h3>
+      <p>Atención automatizada en WhatsApp, Instagram DM y/o chat web. Calificación de leads, respuestas a preguntas frecuentes y derivación a ventas con IA. Incluye configuración y gestión mensual.</p>
+      <div class="aprice grad">$650<small>/mes</small></div>
+      <div class="atag">Setup incluido · WhatsApp · IG DM · Web Chat</div>
+    </div>
+    <div class="addon">
+      <div class="aico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9a7bff" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M9 21V9"/></svg></div>
+      <h3>AD Manager / Media Buyer</h3>
+      <p>Gestión activa de campañas en Meta Ads y/o TikTok Ads. Estrategia de audiencias, estructura de campañas, optimización de pujas y presupuesto. Reportes semanales de performance.</p>
+      <div class="aprice grad">$1,200<small>/mes</small></div>
+      <div class="atag">Hasta $5,000/mes de ad spend · % variable sobre eso</div>
+    </div>
+    <div class="addon">
+      <div class="aico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3d7bff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg></div>
+      <h3>Landing Page AI</h3>
+      <p>Copy estratégico + diseño de landing optimizada para conversión. Variaciones de headline y CTA listas para A/B test. Entregada con versión mobile y desktop.</p>
+      <div class="aprice grad">$900<small> one-time</small></div>
+      <div class="atag">+ $200/mes actualizaciones y variaciones · optional</div>
+    </div>
+    <div class="addon">
+      <div class="aico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff5a8a" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+      <h3>Email & CRM Automation</h3>
+      <p>Flujos de nurture, bienvenida, abandono y recuperación con IA. Integración con tu CRM o plataforma de email. Segmentación y personalización por comportamiento.</p>
+      <div class="aprice grad">$750<small>/mes</small></div>
+      <div class="atag">Setup incluido · Klaviyo · ActiveCampaign · HubSpot</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════ SLIDE 13 · CIERRE ══════════════════════════════ -->
+<section class="slide">
+<div class="inner" style="text-align:center">
+  <div class="kicker r" style="justify-content:center">Empecemos</div>
+  <h1 class="r grad" style="--d:140ms;margin:22px auto 0;max-width:16ch">Convirtamos tu producto en una historia que vende.</h1>
+  <p class="lead r" style="--d:260ms;margin:20px auto 0">Esta semana podemos agendar la llamada de estrategia sin costo. En semanas tenés tu primera biblioteca de creativos lista para testear — y un sistema que no para de alimentar tu pauta.</p>
+  <div class="r" style="--d:380ms;margin-top:36px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <span class="pill"><span class="dot"></span>Pragma AI</span>
+    <span class="pill">Practical AI for Real Businesses</span>
+  </div>
+</div>
+</section>
+
+</div><!-- /deck -->
+
+<!-- HUD -->
+<div class="hud">
+  <div class="brand-mini"><b>PRAGMA AI</b></div>
+  <div class="nav">
+    <button class="nb" id="prev" aria-label="Anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="counter"><b id="cur">01</b> / <span id="tot">13</span></div>
+    <button class="nb" id="next" aria-label="Siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></button>
+  </div>
+</div>
+<div class="dots" id="dots"></div>
+<div class="hint">← → para navegar</div>
+
+<script>
+// ── Stage interaction (slide 11) ──
+function setStage(idx){
+  document.querySelectorAll('.stage-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.querySelectorAll('[id^="sp"]').forEach((p,i)=>{
+    p.classList.toggle('active', i===idx);
+  });
+}
+
+// ── Deck navigation ──
+(function(){
+  const slides=[...document.querySelectorAll('.slide')];
+  const n=slides.length;
+  let i=0;
+  document.getElementById('tot').textContent=String(n).padStart(2,'0');
+  const cur=document.getElementById('cur');
+  const prog=document.getElementById('progress');
+  const wrap=document.getElementById('dots');
+  const prevB=document.getElementById('prev');
+  const nextB=document.getElementById('next');
+
+  slides.forEach((_,k)=>{
+    const d=document.createElement('button');
+    d.className='pdot'+(k===0?' on':'');
+    d.setAttribute('aria-label','Slide '+(k+1));
+    d.onclick=()=>go(k);
+    wrap.appendChild(d);
+  });
+  const dots=[...wrap.children];
+
+  function go(n2){
+    n2=Math.max(0,Math.min(n-1,n2));
+    if(n2===i) return;
+    slides[i].classList.remove('active');
+    i=n2;
+    slides[i].classList.add('active');
+    upd();
+  }
+  function upd(){
+    cur.textContent=String(i+1).padStart(2,'0');
+    prog.style.width=((i+1)/n*100)+'%';
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    prevB.disabled=i===0;
+    nextB.disabled=i===n-1;
+  }
+  prevB.onclick=()=>go(i-1);
+  nextB.onclick=()=>go(i+1);
+  window.addEventListener('keydown',e=>{
+    if(['ArrowRight','Space','PageDown'].includes(e.key)||e.key===' '){e.preventDefault();go(i+1);}
+    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(i-1);}
+    if(e.key==='Home')go(0);
+    if(e.key==='End')go(n-1);
+  });
+  let wl=false;
+  window.addEventListener('wheel',e=>{
+    if(wl||Math.abs(e.deltaY)<28)return;
+    wl=true;setTimeout(()=>wl=false,700);
+    e.deltaY>0?go(i+1):go(i-1);
+  },{passive:true});
+  let tx=0;
+  window.addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
+  window.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>55)dx<0?go(i+1):go(i-1);},{passive:true});
+  upd();
+})();
+</script>
+</body>
+</html>
