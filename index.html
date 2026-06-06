@@ -190,6 +190,9 @@ h2{font-weight:800;font-size:clamp(26px,4vw,54px);line-height:1.03;letter-spacin
   .dots{display:none}
   .arrow{display:none}
   .stage-detail.active{grid-template-columns:1fr}
+  /* slides scrollables en mobile */
+  .slide{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .slide .inner{padding-bottom:80px}
 }
 @media(max-width:560px){
   .g3,.plans-grid{grid-template-columns:1fr}
@@ -780,9 +783,14 @@ function setStage(idx){
     wl=true;setTimeout(()=>wl=false,700);
     e.deltaY>0?go(i+1):go(i-1);
   },{passive:true});
-  let tx=0;
-  window.addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
-  window.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>55)dx<0?go(i+1):go(i-1);},{passive:true});
+  let tx=0,ty=0;
+  window.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+  window.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-tx;
+    const dy=e.changedTouches[0].clientY-ty;
+    // solo navegar si el swipe es más horizontal que vertical
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>55)dx<0?go(i+1):go(i-1);
+  },{passive:true});
   upd();
 })();
 </script>
